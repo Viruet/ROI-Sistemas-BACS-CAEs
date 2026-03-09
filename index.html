@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>ROI Sistemas BACS + CAEs (Modo avanzado)</title>
+  <style>
+    :root {
+      --se-green-main: #30CF57;   /* Verde SE main */
+      --se-green-dark: #009E4D;   /* Verde corporativo */
+      --se-green-soft: #E6F8EC;
+      --se-bg: #F5F7F9;
+      --se-border: #D0D7E2;
+      --se-text-main: #1F2933;
+      --se-text-muted: #66737F;
+      --se-card-bg: #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      background: var(--se-bg);
+      color: var(--se-text-main);
+    }
+
+    /* CABECERA (pantalla) */
+    .se-header {
+      background: var(--se-green-main);
+      color: white;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .se-header-left { display: flex; align-items: center; gap: 16px; }
+    .se-title-block h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+    .se-title-block p { margin: 2px 0 0 0; font-size: 0.85rem; opacity: 0.9; }
+    .se-header-right { display: flex; align-items: center; gap: 12px; }
+    .se-logo svg { height: 32px; width: auto; display: block; }
+
+    .se-wrapper { max-width: 1200px; margin: 20px auto 32px auto; padding: 0 16px; }
+    h2, h3 { color: var(--se-green-dark); margin-top: 0; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+    .card {
+      background: var(--se-card-bg);
+      border-radius: 10px; padding: 14px 16px 16px 16px;
+      border: 1px solid var(--se-border);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 6px; }
+    .card-small { font-size: 0.85rem; color: var(--se-text-muted); margin-bottom: 8px; }
+    label { display: block; margin-top: 6px; font-size: 0.85rem; color: var(--se-text-muted); }
+    label span { display: inline-block; margin-bottom: 2px; color: var(--se-text-main); font-weight: 500; }
+    input, select {
+      width: 100%; padding: 6px 8px; margin-top: 2px;
+      border-radius: 6px; border: 1px solid var(--se-border);
+      font-size: 0.9rem; color: var(--se-text-main); background: #FFFFFF;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: var(--se-green-main);
+      box-shadow: 0 0 0 2px rgba(48,207,87,0.15);
+    }
+    hr { border: none; border-top: 1px solid var(--se-border); margin: 10px 0; }
+    .se-button {
+      margin-top: 12px; width: 100%; padding: 9px 12px;
+      border-radius: 999px; border: none; background: var(--se-green-dark);
+      color: white; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+    .se-button:hover { background: #00763A; transform: translateY(-1px); }
+
+    .results {
+      margin-top: 20px; padding: 16px 18px 18px 18px;
+      border-radius: 10px; background: var(--se-green-soft); border: 1px solid #C1E9CE;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .results h2 { margin-top: 0; margin-bottom: 8px; }
+    .results h3 { margin-top: 0; font-size: 0.95rem; }
+    .results p { margin: 3px 0; font-size: 0.9rem; }
+    .metric-strong { font-weight: 600; }
+    table { border-collapse: collapse; margin-top: 8px; width: 100%; font-size: 0.85rem; background: #FFFFFF; border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid var(--se-border); padding: 4px 6px; text-align: right; }
+    th { background: #EEF7F1; color: var(--se-text-main); font-weight: 600; }
+    th:first-child, td:first-child { text-align: left; }
+
+    /* INFORME (se rellena dinámicamente y sólo se muestra al imprimir) */
+    #informe { display: none; margin: 16px 0 0 0; }
+    #informe .kpi { font-weight: 600; }
+    #informe .muted { color: #555; font-size: 0.9rem; }
+    #informe .report-subtitle { margin: 8px 0 8px 0; font-weight: 600; }
+
+    /* Botón “imprimir” al final */
+    .print-area { margin-top: 14px; }
+    .no-print { }
+
+    /* Estilos de impresión (PDF A4) */
+    @media print {
+      @page { size: A4; margin: 18mm; } /* Márgenes incrementados */
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      /* Ocultar UI de pantalla en PDF */
+      header.se-header, .grid, .results, .no-print { display: none !important; }
+
+      /* Mostrar sólo el informe en PDF */
+      #informe { display: block !important; }
+
+      /* Banda de cabecera del informe (ya existente en v7) */
+      #informe .header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 12px; padding: 10px 12px;
+        background: var(--se-green-dark); color: #fff;
+        border-radius: 8px;
+      }
+      #informe .header .logo svg { height: 28px; display: block; }
+      #informe .header .right { text-align: right; }
+      #informe .header .right h2 { margin: 0; color: #fff !important; }
+      #informe .header .right #inf-fecha {
+        color: #fff; opacity: 0.9; font-size: 0.85rem; margin-top: 2px;
+      }
+
+      /* Títulos del informe en verde corporativo (fuera de la banda) */
+      #informe h2, #informe h3, #informe h4 { color: var(--se-green-dark) !important; }
+      /* Subtítulo en texto oscuro para legibilidad */
+      #informe .report-subtitle { color: #111 !important; }
+
+      /* Cabeceras de tablas en gris claro */
+      table th { background: #e9ecef !important; color: #000 !important; }
+    }
+
+    @media (max-width: 720px) {
+      .two-col { grid-template-columns: 1fr; }
+      .se-header { flex-direction: column; align-items: stretch; gap: 10px; }
+      .se-header-right { justify-content: flex-end; }
+    }
+  
+
+/* ==== Marca de propiedad / créditos ==== */
+.se-legal-footer{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 8px 16px;
+  background: rgba(245,247,249,0.92);
+  border-top: 1px solid var(--se-border);
+  font-size: 0.8rem;
+  color: var(--se-text-muted);
+  text-align: center;
+  z-index: 999;
+  backdrop-filter: blur(6px);
+}
+
+/* Evita que el footer tape contenido en pantalla */
+body{ padding-bottom: 48px; }
+
+/* Footer dentro del informe (impresión) */
+#informe .report-footer{
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid #cfd6e0;
+  font-size: 0.75rem;
+  color: #555;
+  text-align: center;
+}
+
+@media print{
+  /* En impresión no necesitamos el padding inferior de pantalla */
+  body{ padding-bottom: 0 !important; }
+}
+
+</style>
+</head>
+<body>
+  <!-- CABECERA (pantalla) -->
+  <header class="se-header">
+    <div class="se-header-left">
+      <div class="se-title-block">
+        <h1>ROI Sistemas BACS + CAEs</h1>
+        <p>Basado en UNE‑EN ISO 52120‑1 y Ficha TER050 · Sistemas BACS & Certificados de Ahorro Energético</p>
+      </div>
+    </div>
+
+    <!-- Logo Schneider blanco sobre verde (pantalla) -->
+    <div class="se-header-right">
+      <div class="se-logo" aria-label="Schneider Electric logo">
+        <!-- (SVG simplificado para header de pantalla) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 312 64">
+  <g fill="#fff">
+    <path d="M12.17 40h-10V22.76c0-.67 0-1.62-1.09-1.62C0 21.14 0 22.1 0 22.76v17.37c0 1.49.14 1.62 1.76 1.62h10.28c.67 0 1.62 0 1.62-.8.13-.95-.81-.95-1.49-.95Zm4.46-13.33c-.95 0-.95.8-.95 1.48v12.52c0 .68 0 1.49.95 1.49s.95-.81.95-1.49V28.15c0-.54 0-1.48-.95-1.48Zm0-4.99c-.68 0-1.22.54-1.22 1.08 0 .67.54 1.08 1.22 1.08.67 0 1.21-.54 1.21-1.08s-.54-1.08-1.21-1.08Zm9.48 5.39h-2.03v-1.35c0-1.88.14-3.1 2.44-3.1h1.35c.54 0 .81-.4.81-.8 0 0 0-.4-.4-.68a8.13 8.13 0 0 0-2.3-.4c-.68 0-1.36.13-1.9.4-.67.27-1.08.68-1.35 1.21-.13.27-.4.95-.4 2.7v2.02h-1.76c-.27 0-1.22 0-1.22.67s.81.67 1.22.67h1.62v12.26c0 .67 0 1.48.95 1.48.94 0 .94-.8.94-1.48V28.41h2.03c.81 0 1.22-.26 1.22-.67 0-.67-.81-.67-1.22-.67Zm15.4 6.33c0-.13 0-1.75-.94-3.37a6.71 6.71 0 0 0-2.03-2.28c-.14 0-.14-.14-.27-.14 0 0-.14-.13-.27-.13-.27-.14-.4-.14-.68-.27-.13 0-.13 0-.27-.14-.27-.13-.54-.13-.81-.27h-.14c-.27 0-.67-.13-.94-.13h-.68c-2.3 0-4.2.67-5.4 2.15a8.04 8.04 0 0 0-1.9 5.52 8.7 8.7 0 0 0 1.76 5.53 7.07 7.07 0 0 0 2.3 1.61c.94.4 2.02.54 3.24.54 2.84 0 4.46-1.08 5.27-2.02a5.44 5.44 0 0 0 1.36-2.42c0-.4-.4-.81-.95-.81-.4 0-.81.27-.95.67a4.6 4.6 0 0 1-2.57 2.7c-.67.26-1.35.4-2.16.4-1.76 0-2.97-.54-3.92-1.75a7.12 7.12 0 0 1-1.35-4.31h10.4c1.1.13 1.9.13 1.9-1.08Zm-12.17-.27c.27-1.88 1.62-4.98 5.14-4.98 4.46 0 4.87 3.77 5 4.98H29.34Zm21.91-11.99c-1.08 0-1.08.95-1.08 1.62v17.78c0 .67 0 1.61 1.08 1.61s1.08-.94 1.08-1.61V22.63c0-.68 0-1.49-1.08-1.49Zm34.9 10.78c.68 0 1.09-.54 1.09-1.08V18.58h-2.17v12.26c0 .4.4 1.08 1.08 1.08Zm-20.29 2.55c-.13-.13-.27-.13-.4-.13h-.14c-1.08-.4-2.3-.8-3.51-.94-1.22-.27-2.3-.54-3.11-.95-.95-.4-1.36-1.07-1.36-1.88 0-1.62 1.9-2.3 3.79-2.3 2.03 0 3.52.82 3.92 2.03.27.8.54.94.95.94.81 0 .95-.8.95-.8a3.2 3.2 0 0 0-.95-1.9 4.12 4.12 0 0 0-1.76-1.2A7.8 7.8 0 0 0 61 26.8c-2.17 0-3.8.54-4.74 1.75-.94 1.08-.94 2.15-.94 2.42a3.1 3.1 0 0 0 1.48 2.7c.95.67 1.9.8 3.92 1.34.55.14 1.09.27 1.76.4h.14c1.08.28 3.1.82 3.1 2.57 0 1.34-1.34 2.82-4.32 2.82-2.16 0-3.65-.8-4.46-2.42-.27-.4-.4-.94-.95-.94-.27 0-.4.13-.67.27a.98.98 0 0 0-.28.54c0 .8.68 2.02 1.63 2.82.54.4.94.68 1.62.81.81.27 1.76.4 2.98.4 2.43 0 4.32-.53 5.4-1.75a4.32 4.32 0 0 0 1.09-2.69 3.16 3.16 0 0 0-1.9-3.37Zm45.04-6.19a5.92 5.92 0 0 0-4.34-1.61c-2.97 0-4.19 1.48-5.13 2.42v-1.08c0-.4 0-.94-.27-1.2h-.14c-.13-.14-.27-.14-.54-.14-.95 0-.95.8-.95 1.48v12.52c0 .68 0 1.49.95 1.49.27 0 .4 0 .54-.14h.14c.27-.27.27-.8.27-1.21v-5.39c0-2.42.13-3.63.54-4.58.4-.8 1.08-1.48 1.9-1.88.8-.4 1.75-.68 2.56-.68 1.35 0 2.43.54 3.11 1.35.54.8.68 1.89.68 2.96v8.08c0 .4 0 .95.27 1.22h.13c.14.13.27.13.54.13.95 0 .95-.8.95-1.48v-8.48c0-.68 0-2.56-1.22-3.78Z" />
+    <path d="M89.11 20.88v2.15a9.04 9.04 0 0 1 6.09 8.48 8.93 8.93 0 0 1-9.06 8.9 8.9 8.9 0 0 1-3.11-17.25v-2.15a10.87 10.87 0 0 0-7.85 10.5c0 6.06 5 10.91 10.96 10.91 6.08 0 10.95-4.98 10.95-10.9a10.62 10.62 0 0 0-7.98-10.64Zm80.21 2.28c-3.65-1.61-5.82-2.29-7.98-2.29-2.3 0-3.79.81-3.79 2.02 0 3.78 12.98 2.7 12.98 11.45 0 4.85-4.05 7.68-9.73 7.68-4.47 0-6.63-1.21-9.2-2.43v-5.38c3.65 2.42 5.82 3.23 8.66 3.23 2.43 0 3.78-.8 3.78-2.29 0-4.17-12.98-2.56-12.98-11.72 0-4.3 3.79-7.27 9.6-7.27 2.84 0 5.41.54 8.66 2.02v4.98Zm18.12 17.78a16.3 16.3 0 0 1-5.82 1.21c-6.08 0-9.87-3.5-9.87-8.75s4.06-8.89 9.74-8.89c1.75 0 3.92.4 5.81 1.08v4.04a9.19 9.19 0 0 0-4.33-1.21c-3.24 0-5.27 1.88-5.27 4.84 0 2.97 2.03 4.99 5.14 4.99 1.35 0 2.43-.27 4.87-1.22v3.91m49.9-16.56c-5.27 0-9.06 3.77-9.06 8.89 0 5.25 3.92 8.75 9.87 8.75 1.36 0 4.6 0 7.58-2.29V36.5c-2.57 1.75-4.2 2.42-6.36 2.42-3.38 0-5.4-1.75-5.68-4.71h12.3c.41-6.33-3.64-9.83-8.65-9.83Zm-3.24 7c.27-2.42 1.62-3.77 3.65-3.77s3.51 1.35 3.65 3.77h-7.3Zm19.61-6.73h-5.41v17.1h5.4v-17.1Zm14.86-8.09v8.9a10.37 10.37 0 0 0-4.46-1.08c-4.87 0-8.25 3.63-8.25 8.88 0 5.12 3.38 8.9 7.98 8.9 1.75 0 3.24-.55 4.73-1.76v1.35h5.4V16.56h-5.4Zm0 20.61a4.63 4.63 0 0 1-3.25 1.35c-2.57 0-4.19-2.02-4.19-5.12 0-3.37 1.62-5.39 4.33-5.39.94 0 2.3.4 2.97.94v8.22h.14Zm16.78-12.79c-5.28 0-9.06 3.77-9.06 8.89 0 5.25 3.92 8.75 9.87 8.75 1.35 0 4.6 0 7.7-2.29V36.5c-2.56 1.75-4.19 2.42-6.35 2.42-3.38 0-5.41-1.75-5.68-4.71h12.3c.28-6.33-3.78-9.83-8.78-9.83Zm-3.39 7c.27-2.42 1.63-3.77 3.66-3.77 2.02 0 3.51 1.35 3.78 3.77h-7.44Zm20.29-1.75c1.62-3.5 3.51-5.25 5.54-5.25 1.08 0 2.03.4 3.52 1.61l-1.49 4.72c-1.35-.95-2.3-1.22-3.24-1.22-2.03 0-3.25 1.89-4.47 4.99v7.4h-5.4V24.65h5.4v4.98M254.24 17.5c.54 1.35-.4 3.24-2.03 4.18-1.62.94-3.38.67-3.79-.67-.54-1.35.41-3.23 2.03-4.18 1.49-.94 3.25-.67 3.79.68Zm-47.47 13.48c0-4.58-3.1-6.47-6.22-6.47-2.16 0-3.92.95-5.4 2.83H195V16.7h-5.41v25.2h5.4V31.1c1.23-1.75 2.3-2.56 3.66-2.56 1.62 0 2.84 1.22 2.84 3.77v6.06a16.92 16.92 0 0 1 5.41-1.75v-5.65m13.4-6.59c-2.16 0-3.92.8-5.54 2.83v-2.43h-5.41v11.58c1.9.14 4.2 1.08 5.4 2.43v-7.95c1.36-2.15 2.44-2.83 3.8-2.83 1.48 0 2.7.95 2.7 3.37v10.37h5.41V30.98c-.14-5.12-3.79-6.6-6.36-6.6Zm9.2 22.22h-6.35v4.44h6.09v1.89h-6.09v4.58h6.5v1.88h-8.53V44.71h8.39v1.89Zm6.9-1.89h-1.9V59.4h1.9V44.71Zm6.88 10.1h6.76c0-3.63-1.62-5.25-4.19-5.25-2.7 0-4.46 2.02-4.46 4.85 0 2.7 1.62 5.12 4.73 5.12 1.63 0 2.7-.4 3.92-1.08v-1.89a5.78 5.78 0 0 1-3.38 1.22c-2.03 0-3.1-.95-3.38-2.97Zm2.7-3.63c1.36 0 2.17.94 2.3 2.42h-4.86c.13-1.48 1.08-2.42 2.57-2.42Zm16.65 1.07a4.11 4.11 0 0 0-2.7-.94c-1.76 0-2.98 1.35-2.98 3.37s1.35 3.23 3.24 3.23c.81 0 1.63-.27 2.57-.67v1.88a8.8 8.8 0 0 1-2.84.54 4.68 4.68 0 0 1-4.87-4.85c0-3.23 1.9-5.25 4.74-5.25 1.08 0 1.9.27 2.84.67v2.02Zm8.78-2.55h3.11v1.74h-3.1v4.99c0 1.07.8 1.48 1.34 1.48.68 0 1.36-.27 2.17-.68V59a5.5 5.5 0 0 1-2.3.67c-2.03 0-3.11-1.35-3.11-3.1v-5.12h-1.63v-.13l3.66-3.5v1.88m10.15 0v2.28c.94-1.75 1.9-2.42 2.84-2.42.8 0 1.48.4 2.3 1.08l-1.08 1.61c-.55-.53-1.36-.94-1.76-.94-1.36 0-2.3 1.35-2.3 2.96v5.12h-1.9v-9.7h1.9Zm24.88 2.55a4.11 4.11 0 0 0-2.7-.94c-1.76 0-2.98 1.35-2.98 3.37s1.35 3.23 3.25 3.23c.8 0 1.62-.27 2.56-.67v1.88a8.8 8.8 0 0 1-2.84.54 4.68 4.68 0 0 1-4.86-4.85c0-3.23 1.89-5.25 4.73-5.25 1.08 0 1.9.27 2.84.67v2.02Zm-12.72-2.55h-1.9v9.7h1.9v-9.7Zm.14-3.5c.13.4-.14 1.07-.68 1.47-.54.4-1.22.27-1.35-.27-.14-.53.13-1.07.67-1.48.55-.27 1.09-.13 1.36.27Zm-84.52 4.84.54-2.15h5.27c.68-3.1.14-5.93-1.76-7.68-3.78-3.77-11.63-2.42-17.44 3.1-.95.8-1.62 1.75-2.44 2.7h3.25l-.68 2.15h-3.78c-.4.67-.68 1.34-.95 2.02h4.46l-.67 2.15h-4.47c-.8 3.23-.27 6.2 1.63 8.08 3.65 3.64 11.5 2.43 17.44-3.23 1.08-.94 1.9-2.02 2.57-3.1h-4.05l.67-2.15h4.73c.41-.68.68-1.35.95-2.02h-5.27v.13ZM208.26 47c-.27 0-.54 0-.68.27 0 0-.13.14-.13.27l-1.63 6.47c-.4 2.28-3.24 4.57-6.9 4.57h-5.13l.95-3.36h3.24c.27 0 .54-.14.81-.4.14-.14.14-.28.14-.41l1.35-5.66c.4-2.29 2.84-4.85 6.5-4.85h5.13l-.67 3.1h-2.98ZM132.13 0h-1.09v64h1.09V0Z" />
+  </g>
+</svg>
+
+      </div>
+    </div>
+  </header>
+
+  <main class="se-wrapper">
+    <!-- NUEVO: Campo editable para el nombre del proyecto (sustituye el texto fijo) -->
+    <div class="card" style="margin-bottom:16px;">
+      <label>
+        <span>Nombre del proyecto</span>
+        <input type="text" id="nombreProyecto" placeholder="Ej.: Modernización BACS — Edificio XXX">
+      </label>
+      <p class="card-small"></p>
+    </div>
+
+    <div class="grid">
+      <!-- 1. Edificio -->
+      <div class="card">
+        <h2>1. Edificio</h2>
+        <p class="card-small">
+          Selecciona la tipología según la norma y la zona climática CTE del edificio.
+        </p>
+
+        <label>
+          <span>Tipo de edificio</span>
+          <select id="tipoEdificio">
+            <option>Oficinas</option>
+            <option>Auditorios / Salas de conferencias</option>
+            <option>Edificios para enseñanza (escuelas)</option>
+            <option>Hospitales</option>
+            <option>Hoteles</option>
+            <option>Restaurantes</option>
+            <option>Edificios comerciales de venta mayorista y minorista</option>
+          </select>
+        </label>
+
+        <!-- Zona climática CTE -->
+        <label>
+          <span>Zona climática (CTE)</span>
+          <select id="zonaCTE">
+            <option value="A3">A3 · Costas sur – clima cálido</option>
+            <option value="B3">B3 · Levante costero</option>
+            <option value="C2">C2 · Galicia / norte templado</option>
+            <option value="C3" selected>C3 · Cataluña costera / Valencia interior</option>
+            <option value="D2">D2 · Norte interior</option>
+            <option value="D3">D3 · Madrid y centro peninsular</option>
+            <option value="E1">E1 · Pirineos / Soria / alta montaña</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Superficie habitable (m²)</span>
+          Información catastral
+          <input type="number" id="superficie" value="1000" min="0">
+        </label>
+      </div>
+
+      <!-- 2. Consumos -->
+      <div class="card">
+        <h2 id="tituloConsumos">2. Consumos <span id="unidadConsumos">(kWh/m²·año)</span></h2>
+        <p class="card-small" id="introConsumos">
+          Introduce el consumo energético anual del edificio por servicio o el total.
+        </p>
+
+        <label>
+          <span>Modo de introducción de consumos</span>
+          <select id="modoConsumo" onchange="actualizarVisibilidadConsumos()">
+            <option value="servicio">Por servicio</option>
+            <option value="total">Total edificio</option>
+          </select>
+        </label>
+
+        <p class="card-small" id="notaModoConsumo"></p>
+
+        <!-- Por servicio -->
+        <div id="bloqueConsumoServicio">
+          <label><span>Calefacción</span><input type="number" id="eCalef" value="87" step="0.1"></label>
+          <label><span>ACS</span><input type="number" id="eACS" value="80" step="0.1"></label>
+          <label><span>Refrigeración</span><input type="number" id="eRefrig" value="45" step="0.1"></label>
+          <label><span>Iluminación</span><input type="number" id="eIlum" value="64" step="0.1"></label>
+        </div>
+
+        <!-- Total edificio -->
+        <div id="bloqueConsumoTotal" style="display:none;">
+          <label><span>Consumo total del edificio</span><input type="number" id="eTotal" value="" step="10"></label>
+        </div>
+      </div>
+
+      <!-- 3. Economía -->
+      <div class="card">
+        <h2>3. Economía del proyecto</h2>
+        <p class="card-small">
+          Introduce el precio de la energía, el precio esperado del CAE (€/kWh ahorrado) y los costes del proyecto BACS (CAPEX y OPEX) para estimar el ROI con y sin la monetización de CAE.
+        </p>
+
+        <label><span>Precio energía (€/kWh)</span><input type="number" id="precioEnergia" value="0.15" step="0.001"></label>
+        <label><span>Precio CAE (€/kWh ahorrado)</span><input type="number" id="precioCAE" value="0.12" step="0.00001"></label>
+        <hr>
+        <label><span>Coste de suscripción anual (€/año)</span><input type="number" id="costeSubscripcion" value="300" step="100"></label>
+        <label><span>Coste de material (€, one‑shot)</span><input type="number" id="costeMaterial" value="1500" step="100"></label>
+        <label><span>Coste de instalación y puesta en marcha (€, one‑shot)</span><input type="number" id="costeInstalacion" value="3000" step="100"></label>
+      </div>
+
+      <!-- 4. Configuración -->
+      <div class="card">
+        <h2>4. Configuración del cálculo</h2>
+        <label>
+          <span>Tipo de cálculo</span>
+          <select id="modoCalculo" onchange="actualizarModoCalculo()">
+            <option value="TER050" selected>Ficha TER050</option>
+            <option value="Singular">Actuación Singular</option>
+          </select>
+        </label>
+        <p class="card-small" id="notaModoCalculo">
+          <strong>TER050:</strong> exige al menos clase B en los servicios objeto del ahorro; sin salto de clase no se considera ahorro estandarizado.
+          <strong>Singular:</strong> permite definir % de ahorro sin salto de clase, con resultado agregado o por servicio.
+        </p>
+
+        <!-- TER050 (clases BAC) -->
+        <div id="bloqueTER050">
+          <table>
+            <thead><tr><th>Servicio</th><th>Clase inicial</th><th>Clase final</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Calefacción</td>
+                <td>
+                  <select id="claseIniH">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="claseFinH">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td>Refrigeración</td>
+                <td>
+                  <select id="claseIniC">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="claseFinC">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td>ACS</td>
+                <td>
+                  <select id="claseIniACS">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="claseFinACS">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td>Iluminación</td>
+                <td>
+                  <select id="claseIniL">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="claseFinL">
+                    <option value="NA">NA</option><option value="D">D</option><option value="C">C</option><option value="B">B</option><option value="A">A</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Actuación Singular -->
+        <div id="bloqueSingular" style="display:none;">
+          <label>
+            <span>Tipo de ahorro en Actuación Singular</span>
+            <select id="modoSingular" onchange="actualizarModoSingular()">
+              <option value="servicio" selected>Ahorro por servicio</option>
+              <option value="total">Ahorro total</option>
+            </select>
+          </label>
+
+          <!-- Por servicio -->
+          <div id="singularPorServicio">
+            <table>
+              <thead><tr><th>Servicio</th><th>% ahorro (0–100)</th></tr></thead>
+              <tbody>
+                <tr><td>Calefacción</td><td><input type="number" id="pSingH" value="0" min="0" max="100" step="0.1"></td></tr>
+                <tr><td>Refrigeración</td><td><input type="number" id="pSingC" value="0" min="0" max="100" step="0.1"></td></tr>
+                <tr><td>ACS</td><td><input type="number" id="pSingACS" value="0" min="0" max="100" step="0.1"></td></tr>
+                <tr><td>Iluminación</td><td><input type="number" id="pSingL" value="0" min="0" max="100" step="0.1"></td></tr>
+              </tbody>
+            </table>
+            <p class="card-small">Introduce el porcentaje de ahorro esperado por servicio. No se exige salto de clase.</p>
+          </div>
+
+          <!-- Total -->
+          <div id="singularTotal" style="display:none;">
+            <label>
+              <span>% ahorro total (0–100)</span>
+              <input type="number" id="pSingTotal" value="0" min="0" max="100" step="0.1">
+            </label>
+            <p class="card-small">Este porcentaje se aplica de forma uniforme a los servicios activos.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="se-button" onclick="calcularROI()">
+        <span>Calcular retorno de la inversión</span>
+      </button>
+    </div>
+
+    <!-- RESULTADOS EN PANTALLA -->
+    <section class="results">
+      <h2>Resultados</h2>
+      <div class="two-col">
+        <div>
+          <h3>Ahorro energético y valor CAE</h3>
+          <p id="resAhorroKWh"></p>
+          <p id="resAhorroEurosEnergia"></p>
+          <p id="resValorCAE"></p>
+        </div>
+        <div>
+          <h3>Retorno de la inversión (payback)</h3>
+          <p id="resSinCAE"></p>
+          <p id="resConCAE"></p>
+        </div>
+      </div>
+
+      <h3 id="tituloDetalle">Detalle por servicio</h3>
+      <div id="detalleServicios" style="font-size:0.9rem;"></div>
+    </section>
+
+    <!-- INFORME (sólo impresión) -->
+    <section id="informe">
+      <!-- BANDA DE CABECERA: logo + título + fecha/hora -->
+      <div class="header">
+        <div class="logo" aria-label="Schneider Electric logo">
+          <!-- Logo blanco sobre banda verde -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 312 64">
+  <g fill="#fff">
+    <path d="M12.17 40h-10V22.76c0-.67 0-1.62-1.09-1.62C0 21.14 0 22.1 0 22.76v17.37c0 1.49.14 1.62 1.76 1.62h10.28c.67 0 1.62 0 1.62-.8.13-.95-.81-.95-1.49-.95Zm4.46-13.33c-.95 0-.95.8-.95 1.48v12.52c0 .68 0 1.49.95 1.49s.95-.81.95-1.49V28.15c0-.54 0-1.48-.95-1.48Zm0-4.99c-.68 0-1.22.54-1.22 1.08 0 .67.54 1.08 1.22 1.08.67 0 1.21-.54 1.21-1.08s-.54-1.08-1.21-1.08Zm9.48 5.39h-2.03v-1.35c0-1.88.14-3.1 2.44-3.1h1.35c.54 0 .81-.4.81-.8 0 0 0-.4-.4-.68a8.13 8.13 0 0 0-2.3-.4c-.68 0-1.36.13-1.9.4-.67.27-1.08.68-1.35 1.21-.13.27-.4.95-.4 2.7v2.02h-1.76c-.27 0-1.22 0-1.22.67s.81.67 1.22.67h1.62v12.26c0 .67 0 1.48.95 1.48.94 0 .94-.8.94-1.48V28.41h2.03c.81 0 1.22-.26 1.22-.67 0-.67-.81-.67-1.22-.67Zm15.4 6.33c0-.13 0-1.75-.94-3.37a6.71 6.71 0 0 0-2.03-2.28c-.14 0-.14-.14-.27-.14 0 0-.14-.13-.27-.13-.27-.14-.4-.14-.68-.27-.13 0-.13 0-.27-.14-.27-.13-.54-.13-.81-.27h-.14c-.27 0-.67-.13-.94-.13h-.68c-2.3 0-4.2.67-5.4 2.15a8.04 8.04 0 0 0-1.9 5.52 8.7 8.7 0 0 0 1.76 5.53 7.07 7.07 0 0 0 2.3 1.61c.94.4 2.02.54 3.24.54 2.84 0 4.46-1.08 5.27-2.02a5.44 5.44 0 0 0 1.36-2.42c0-.4-.4-.81-.95-.81-.4 0-.81.27-.95.67a4.6 4.6 0 0 1-2.57 2.7c-.67.26-1.35.4-2.16.4-1.76 0-2.97-.54-3.92-1.75a7.12 7.12 0 0 1-1.35-4.31h10.4c1.1.13 1.9.13 1.9-1.08Zm-12.17-.27c.27-1.88 1.62-4.98 5.14-4.98 4.46 0 4.87 3.77 5 4.98H29.34Zm21.91-11.99c-1.08 0-1.08.95-1.08 1.62v17.78c0 .67 0 1.61 1.08 1.61s1.08-.94 1.08-1.61V22.63c0-.68 0-1.49-1.08-1.49Zm34.9 10.78c.68 0 1.09-.54 1.09-1.08V18.58h-2.17v12.26c0 .4.4 1.08 1.08 1.08Zm-20.29 2.55c-.13-.13-.27-.13-.4-.13h-.14c-1.08-.4-2.3-.8-3.51-.94-1.22-.27-2.3-.54-3.11-.95-.95-.4-1.36-1.07-1.36-1.88 0-1.62 1.9-2.3 3.79-2.3 2.03 0 3.52.82 3.92 2.03.27.8.54.94.95.94.81 0 .95-.8.95-.8a3.2 3.2 0 0 0-.95-1.9 4.12 4.12 0 0 0-1.76-1.2A7.8 7.8 0 0 0 61 26.8c-2.17 0-3.8.54-4.74 1.75-.94 1.08-.94 2.15-.94 2.42a3.1 3.1 0 0 0 1.48 2.7c.95.67 1.9.8 3.92 1.34.55.14 1.09.27 1.76.4h.14c1.08.28 3.1.82 3.1 2.57 0 1.34-1.34 2.82-4.32 2.82-2.16 0-3.65-.8-4.46-2.42-.27-.4-.4-.94-.95-.94-.27 0-.4.13-.67.27a.98.98 0 0 0-.28.54c0 .8.68 2.02 1.63 2.82.54.4.94.68 1.62.81.81.27 1.76.4 2.98.4 2.43 0 4.32-.53 5.4-1.75a4.32 4.32 0 0 0 1.09-2.69 3.16 3.16 0 0 0-1.9-3.37Zm45.04-6.19a5.92 5.92 0 0 0-4.34-1.61c-2.97 0-4.19 1.48-5.13 2.42v-1.08c0-.4 0-.94-.27-1.2h-.14c-.13-.14-.27-.14-.54-.14-.95 0-.95.8-.95 1.48v12.52c0 .68 0 1.49.95 1.49.27 0 .4 0 .54-.14h.14c.27-.27.27-.8.27-1.21v-5.39c0-2.42.13-3.63.54-4.58.4-.8 1.08-1.48 1.9-1.88.8-.4 1.75-.68 2.56-.68 1.35 0 2.43.54 3.11 1.35.54.8.68 1.89.68 2.96v8.08c0 .4 0 .95.27 1.22h.13c.14.13.27.13.54.13.95 0 .95-.8.95-1.48v-8.48c0-.68 0-2.56-1.22-3.78Z" />
+    <path d="M89.11 20.88v2.15a9.04 9.04 0 0 1 6.09 8.48 8.93 8.93 0 0 1-9.06 8.9 8.9 8.9 0 0 1-3.11-17.25v-2.15a10.87 10.87 0 0 0-7.85 10.5c0 6.06 5 10.91 10.96 10.91 6.08 0 10.95-4.98 10.95-10.9a10.62 10.62 0 0 0-7.98-10.64Zm80.21 2.28c-3.65-1.61-5.82-2.29-7.98-2.29-2.3 0-3.79.81-3.79 2.02 0 3.78 12.98 2.7 12.98 11.45 0 4.85-4.05 7.68-9.73 7.68-4.47 0-6.63-1.21-9.2-2.43v-5.38c3.65 2.42 5.82 3.23 8.66 3.23 2.43 0 3.78-.8 3.78-2.29 0-4.17-12.98-2.56-12.98-11.72 0-4.3 3.79-7.27 9.6-7.27 2.84 0 5.41.54 8.66 2.02v4.98Zm18.12 17.78a16.3 16.3 0 0 1-5.82 1.21c-6.08 0-9.87-3.5-9.87-8.75s4.06-8.89 9.74-8.89c1.75 0 3.92.4 5.81 1.08v4.04a9.19 9.19 0 0 0-4.33-1.21c-3.24 0-5.27 1.88-5.27 4.84 0 2.97 2.03 4.99 5.14 4.99 1.35 0 2.43-.27 4.87-1.22v3.91m49.9-16.56c-5.27 0-9.06 3.77-9.06 8.89 0 5.25 3.92 8.75 9.87 8.75 1.36 0 4.6 0 7.58-2.29V36.5c-2.57 1.75-4.2 2.42-6.36 2.42-3.38 0-5.4-1.75-5.68-4.71h12.3c.41-6.33-3.64-9.83-8.65-9.83Zm-3.24 7c.27-2.42 1.62-3.77 3.65-3.77s3.51 1.35 3.65 3.77h-7.3Zm19.61-6.73h-5.41v17.1h5.4v-17.1Zm14.86-8.09v8.9a10.37 10.37 0 0 0-4.46-1.08c-4.87 0-8.25 3.63-8.25 8.88 0 5.12 3.38 8.9 7.98 8.9 1.75 0 3.24-.55 4.73-1.76v1.35h5.4V16.56h-5.4Zm0 20.61a4.63 4.63 0 0 1-3.25 1.35c-2.57 0-4.19-2.02-4.19-5.12 0-3.37 1.62-5.39 4.33-5.39.94 0 2.3.4 2.97.94v8.22h.14Zm16.78-12.79c-5.28 0-9.06 3.77-9.06 8.89 0 5.25 3.92 8.75 9.87 8.75 1.35 0 4.6 0 7.7-2.29V36.5c-2.56 1.75-4.19 2.42-6.35 2.42-3.38 0-5.41-1.75-5.68-4.71h12.3c.28-6.33-3.78-9.83-8.78-9.83Zm-3.39 7c.27-2.42 1.63-3.77 3.66-3.77 2.02 0 3.51 1.35 3.78 3.77h-7.44Zm20.29-1.75c1.62-3.5 3.51-5.25 5.54-5.25 1.08 0 2.03.4 3.52 1.61l-1.49 4.72c-1.35-.95-2.3-1.22-3.24-1.22-2.03 0-3.25 1.89-4.47 4.99v7.4h-5.4V24.65h5.4v4.98M254.24 17.5c.54 1.35-.4 3.24-2.03 4.18-1.62.94-3.38.67-3.79-.67-.54-1.35.41-3.23 2.03-4.18 1.49-.94 3.25-.67 3.79.68Zm-47.47 13.48c0-4.58-3.1-6.47-6.22-6.47-2.16 0-3.92.95-5.4 2.83H195V16.7h-5.41v25.2h5.4V31.1c1.23-1.75 2.3-2.56 3.66-2.56 1.62 0 2.84 1.22 2.84 3.77v6.06a16.92 16.92 0 0 1 5.41-1.75v-5.65m13.4-6.59c-2.16 0-3.92.8-5.54 2.83v-2.43h-5.41v11.58c1.9.14 4.2 1.08 5.4 2.43v-7.95c1.36-2.15 2.44-2.83 3.8-2.83 1.48 0 2.7.95 2.7 3.37v10.37h5.41V30.98c-.14-5.12-3.79-6.6-6.36-6.6Zm9.2 22.22h-6.35v4.44h6.09v1.89h-6.09v4.58h6.5v1.88h-8.53V44.71h8.39v1.89Zm6.9-1.89h-1.9V59.4h1.9V44.71Zm6.88 10.1h6.76c0-3.63-1.62-5.25-4.19-5.25-2.7 0-4.46 2.02-4.46 4.85 0 2.7 1.62 5.12 4.73 5.12 1.63 0 2.7-.4 3.92-1.08v-1.89a5.78 5.78 0 0 1-3.38 1.22c-2.03 0-3.1-.95-3.38-2.97Zm2.7-3.63c1.36 0 2.17.94 2.3 2.42h-4.86c.13-1.48 1.08-2.42 2.57-2.42Zm16.65 1.07a4.11 4.11 0 0 0-2.7-.94c-1.76 0-2.98 1.35-2.98 3.37s1.35 3.23 3.24 3.23c.81 0 1.63-.27 2.57-.67v1.88a8.8 8.8 0 0 1-2.84.54 4.68 4.68 0 0 1-4.87-4.85c0-3.23 1.9-5.25 4.74-5.25 1.08 0 1.9.27 2.84.67v2.02Zm8.78-2.55h3.11v1.74h-3.1v4.99c0 1.07.8 1.48 1.34 1.48.68 0 1.36-.27 2.17-.68V59a5.5 5.5 0 0 1-2.3.67c-2.03 0-3.11-1.35-3.11-3.1v-5.12h-1.63v-.13l3.66-3.5v1.88m10.15 0v2.28c.94-1.75 1.9-2.42 2.84-2.42.8 0 1.48.4 2.3 1.08l-1.08 1.61c-.55-.53-1.36-.94-1.76-.94-1.36 0-2.3 1.35-2.3 2.96v5.12h-1.9v-9.7h1.9Zm24.88 2.55a4.11 4.11 0 0 0-2.7-.94c-1.76 0-2.98 1.35-2.98 3.37s1.35 3.23 3.25 3.23c.8 0 1.62-.27 2.56-.67v1.88a8.8 8.8 0 0 1-2.84.54 4.68 4.68 0 0 1-4.86-4.85c0-3.23 1.89-5.25 4.73-5.25 1.08 0 1.9.27 2.84.67v2.02Zm-12.72-2.55h-1.9v9.7h1.9v-9.7Zm.14-3.5c.13.4-.14 1.07-.68 1.47-.54.4-1.22.27-1.35-.27-.14-.53.13-1.07.67-1.48.55-.27 1.09-.13 1.36.27Zm-84.52 4.84.54-2.15h5.27c.68-3.1.14-5.93-1.76-7.68-3.78-3.77-11.63-2.42-17.44 3.1-.95.8-1.62 1.75-2.44 2.7h3.25l-.68 2.15h-3.78c-.4.67-.68 1.34-.95 2.02h4.46l-.67 2.15h-4.47c-.8 3.23-.27 6.2 1.63 8.08 3.65 3.64 11.5 2.43 17.44-3.23 1.08-.94 1.9-2.02 2.57-3.1h-4.05l.67-2.15h4.73c.41-.68.68-1.35.95-2.02h-5.27v.13ZM208.26 47c-.27 0-.54 0-.68.27 0 0-.13.14-.13.27l-1.63 6.47c-.4 2.28-3.24 4.57-6.9 4.57h-5.13l.95-3.36h3.24c.27 0 .54-.14.81-.4.14-.14.14-.28.14-.41l1.35-5.66c.4-2.29 2.84-4.85 6.5-4.85h5.13l-.67 3.1h-2.98ZM132.13 0h-1.09v64h1.09V0Z" />
+  </g>
+</svg>
+
+        </div>
+        <div class="right">
+          <h2>Informe ROI BACS + CAEs</h2>
+          <div id="inf-fecha"></div>
+        </div>
+      </div>
+
+      <p class="report-subtitle">Informe sobre el retorno de la inversión (ROI) estimado</p>
+      <!-- NUEVO: línea Proyecto si está informado -->
+      <p class="muted" id="inf-proyecto" style="margin: 0 0 8px 0;"></p>
+
+      <h3>1. Edificio</h3>
+      <div id="inf-edificio"></div>
+
+      <h3>2. Consumos</h3>
+      <div id="inf-consumos"></div>
+
+      <h3>3. Economía del proyecto</h3>
+      <div id="inf-economia"></div>
+
+      <h3>4. Configuración del cálculo</h3>
+      <div id="inf-config"></div>
+
+      <h3>Resultados</h3>
+      <div id="inf-resultados"></div>
+
+      <!-- Zona de notas al final del informe -->
+      <div id="inf-notas"></div>
+  <div class="report-footer">Propiedad de Schneider Electric © 2026 · Desarrollado por Antonio Paz</div>
+
+    </section>
+
+    <!-- BOTÓN IMPRIMIR PDF A4 -->
+    <div class="print-area no-print">
+      <button class="se-button" onclick="printInforme()">
+        Generar Informe
+      </button>
+    </div>
+  </main>
+
+  <script>
+    /* ==== Repartos por zona climática (CTE) ==== */
+    const zoneWeights = {
+      A3: { desc: "Costas sur – clima cálido", H: 0.15, C: 0.28, ACS: 0.03, L: 0.20, Otros: 0.34 },
+      B3: { desc: "Levante costero", H: 0.20, C: 0.25, ACS: 0.03, L: 0.21, Otros: 0.31 },
+      C2: { desc: "Galicia / norte templado", H: 0.28, C: 0.12, ACS: 0.04, L: 0.22, Otros: 0.34 },
+      C3: { desc: "Cataluña costera / Valencia int.", H: 0.25, C: 0.16, ACS: 0.04, L: 0.22, Otros: 0.33 },
+      D2: { desc: "Norte interior", H: 0.38, C: 0.10, ACS: 0.04, L: 0.21, Otros: 0.27 },
+      D3: { desc: "Madrid y centro peninsular", H: 0.35, C: 0.15, ACS: 0.04, L: 0.21, Otros: 0.25 },
+      E1: { desc: "Pirineos / Soria / alta montaña", H: 0.48, C: 0.06, ACS: 0.05, L: 0.20, Otros: 0.21 }
+    };
+
+    /* Porcentajes de ahorro por saltos de clase (sin cambios) */
+    const savingsData = {
+      "Oficinas": {
+        H: { D_B: 0.4514, D_A: 0.5139, C_B: 0.21, C_A: 0.30, B_A: 0.1139 },
+        C: { D_B: 0.4937, D_A: 0.6392, C_B: 0.20, C_A: 0.43, B_A: 0.2875 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.2342, D_A: 0.3514, C_B: 0.15, C_A: 0.28, B_A: 0.1529 }
+      },
+      "Auditorios / Salas de conferencias": {
+        H: { D_B: 0.4016, D_A: 0.7541, C_B: 0.27, C_A: 0.70, B_A: 0.5890 },
+        C: { D_B: 0.2879, D_A: 0.5152, C_B: 0.06, C_A: 0.36, B_A: 0.3191 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.2072, D_A: 0.3153, C_B: 0.12, C_A: 0.24, B_A: 0.1364 }
+      },
+      "Edificios para enseñanza (escuelas)": {
+        H: { D_B: 0.2667, D_A: 0.3333, C_B: 0.12, C_A: 0.20, B_A: 0.0909 },
+        C: { D_B: 0.2667, D_A: 0.3333, C_B: 0.12, C_A: 0.20, B_A: 0.0909 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.2072, D_A: 0.3153, C_B: 0.12, C_A: 0.24, B_A: 0.1364 }
+      },
+      "Hospitales": {
+        H: { D_B: 0.3053, D_A: 0.3435, C_B: 0.09, C_A: 0.14, B_A: 0.0549 },
+        C: { D_B: 0.3053, D_A: 0.3435, C_B: 0.09, C_A: 0.14, B_A: 0.0549 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.1667, D_A: 0.1667, C_B: 0.00, C_A: 0.00, B_A: 0.0000 }
+      },
+      "Hoteles": {
+        H: { D_B: 0.2735, D_A: 0.4786, C_B: 0.15, C_A: 0.39, B_A: 0.2824 },
+        C: { D_B: 0.5511, D_A: 0.5682, C_B: 0.21, C_A: 0.24, B_A: 0.0380 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.2072, D_A: 0.3153, C_B: 0.12, C_A: 0.24, B_A: 0.1364 }
+      },
+      "Restaurantes": {
+        H: { D_B: 0.3719, D_A: 0.4298, C_B: 0.24, C_A: 0.31, B_A: 0.0921 },
+        C: { D_B: 0.3237, D_A: 0.5683, C_B: 0.06, C_A: 0.40, B_A: 0.3617 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.0991, D_A: 0.0991, C_B: 0.00, C_A: 0.00, B_A: 0.0000 }
+      },
+      "Edificios comerciales de venta mayorista y minorista": {
+        H: { D_B: 0.5449, D_A: 0.7051, C_B: 0.29, C_A: 0.54, B_A: 0.3521 },
+        C: { D_B: 0.4654, D_A: 0.6541, C_B: 0.15, C_A: 0.45, B_A: 0.3529 },
+        ACS:{ D_B: 0.1892, D_A: 0.2793, C_B: 0.10, C_A: 0.20, B_A: 0.1111 },
+        L: { D_B: 0.0991, D_A: 0.0991, C_B: 0.00, C_A: 0.00, B_A: 0.0000 }
+      }
+    };
+
+    function getKeySalto(claseIni, claseFin) {
+      if (!claseIni || !claseFin) return null;
+      if (claseIni === 'NA' || claseFin === 'NA') return null;
+      if (claseIni === claseFin) return null;
+      if (claseIni === 'D' && claseFin === 'B') return 'D_B';
+      if (claseIni === 'D' && claseFin === 'A') return 'D_A';
+      if (claseIni === 'C' && claseFin === 'B') return 'C_B';
+      if (claseIni === 'C' && claseFin === 'A') return 'C_A';
+      if (claseIni === 'B' && claseFin === 'A') return 'B_A';
+      return null;
+    }
+
+    function actualizarVisibilidadConsumos() {
+      const modo = document.getElementById('modoConsumo').value;
+      const bloqueServicio = document.getElementById('bloqueConsumoServicio');
+      const bloqueTotal = document.getElementById('bloqueConsumoTotal');
+      if (modo === 'total') { bloqueServicio.style.display = 'none'; bloqueTotal.style.display = 'block'; }
+      else { bloqueServicio.style.display = 'block'; bloqueTotal.style.display = 'none'; }
+      actualizarTextoUnidadesConsumos(); // unidad + nota
+    }
+
+    function actualizarModoCalculo() {
+      const modo = document.getElementById('modoCalculo').value;
+      const nota = document.getElementById('notaModoCalculo');
+      const bTER = document.getElementById('bloqueTER050');
+      const bSIN = document.getElementById('bloqueSingular');
+      if (modo === 'TER050') {
+        bTER.style.display = 'block';
+        bSIN.style.display = 'none';
+        nota.textContent = 'TER050: exige al menos clase B en los servicios objeto del ahorro; sin salto de clase no se considera ahorro estandarizado.';
+      } else {
+        bTER.style.display = 'none';
+        bSIN.style.display = 'block';
+        nota.textContent = 'Actuación Singular: define un % de ahorro total o por servicio; no se requiere salto de clase.';
+        actualizarModoSingular();
+      }
+    }
+
+    function actualizarModoSingular() {
+      const sub = document.getElementById('modoSingular')?.value || 'servicio';
+      const divServicio = document.getElementById('singularPorServicio');
+      const divTotal = document.getElementById('singularTotal');
+      if (sub === 'total') { divServicio.style.display = 'none'; divTotal.style.display = 'block'; }
+      else { divServicio.style.display = 'block'; divTotal.style.display = 'none'; }
+    }
+
+    // Texto de unidad en el título y nota contextual bajo el selector
+    function actualizarTextoUnidadesConsumos() {
+      const modo = document.getElementById('modoConsumo').value;
+      const unidadSpan = document.getElementById('unidadConsumos');
+      const nota = document.getElementById('notaModoConsumo');
+
+      if (modo === 'servicio') {
+        unidadSpan.textContent = '(kWh/m²·año)';
+        nota.innerHTML = 'Datos del informe del certificado de eficiencia energética. ' +
+          '<a href="https://www.miteco.gob.es/es/energia/eficiencia/certificacion-energetica.html" target="_blank" rel="noopener noreferrer">+info</a>';
+      } else {
+        unidadSpan.textContent = '(kWh/año)';
+        nota.textContent = 'El reparto se hace con los pesos de la zona climática CTE seleccionada (H/C/ACS/Iluminación) — estimación no aceptada para ficha TER050.';
+      }
+    }
+
+    function getNormalizedBaseFromZone(zona) {
+      const z = zoneWeights[zona] || null;
+      if (!z) { return { H: 0.25, ACS: 0.25, C: 0.25, L: 0.25 }; }
+      const raw = { H: z.H, ACS: z.ACS, C: z.C, L: z.L };
+      const sum = raw.H + raw.ACS + raw.C + raw.L;
+      if (sum <= 0) return { H: 0.25, ACS: 0.25, C: 0.25, L: 0.25 };
+      return { H: raw.H / sum, ACS: raw.ACS / sum, C: raw.C / sum, L: raw.L / sum };
+    }
+
+    let __state = null;
+
+    function calcularROI() {
+      const nombreProyecto = (document.getElementById('nombreProyecto')?.value || '').trim();
+
+      const tipo = document.getElementById('tipoEdificio').value;
+      const zona = document.getElementById('zonaCTE').value;
+      const zonaText = document.querySelector('#zonaCTE option:checked')?.textContent || zona;
+      const superficie = parseFloat(document.getElementById('superficie').value) || 0;
+
+      const modoConsumo = document.getElementById('modoConsumo').value;
+      const eCalef  = parseFloat(document.getElementById('eCalef').value)  || 0;
+      const eACS    = parseFloat(document.getElementById('eACS').value)    || 0;
+      const eRefrig = parseFloat(document.getElementById('eRefrig').value) || 0;
+      const eIlum   = parseFloat(document.getElementById('eIlum').value)   || 0;
+      const eTotal  = parseFloat(document.getElementById('eTotal').value)  || 0;
+
+      const precioEnergia = parseFloat(document.getElementById('precioEnergia').value) || 0;
+      const precioCAE     = parseFloat(document.getElementById('precioCAE').value)     || 0;
+      const costeSubs     = parseFloat(document.getElementById('costeSubscripcion').value) || 0;
+      const costeMaterial = parseFloat(document.getElementById('costeMaterial').value) || 0;
+      const costeInstal   = parseFloat(document.getElementById('costeInstalacion').value) || 0;
+
+      const CAPEX = costeMaterial + costeInstal;
+      const OPEX  = costeSubs;
+
+      const modoCalculo = document.getElementById('modoCalculo').value;
+      const data = savingsData[tipo];
+      if (!data) return;
+
+      const clases = {
+        H:   { ini: document.getElementById('claseIniH')?.value   || 'NA', fin: document.getElementById('claseFinH')?.value   || 'NA' },
+        C:   { ini: document.getElementById('claseIniC')?.value   || 'NA', fin: document.getElementById('claseFinC')?.value   || 'NA' },
+        ACS: { ini: document.getElementById('claseIniACS')?.value || 'NA', fin: document.getElementById('claseFinACS')?.value || 'NA' },
+        L:   { ini: document.getElementById('claseIniL')?.value   || 'NA', fin: document.getElementById('claseFinL')?.value   || 'NA' }
+      };
+
+      const E = { H: 0, C: 0, ACS: 0, L: 0 };
+      let baseZ = null, incluidos = [];
+
+      if (modoConsumo === 'total') {
+        // Reparto por zona CTE del eTotal (kWh/año)
+        baseZ = getNormalizedBaseFromZone(zona);
+        incluidos = [];
+        ["H","ACS","C","L"].forEach(svc => {
+          const ini = clases[svc].ini, fin = clases[svc].fin;
+          const excluir = (modoCalculo === 'TER050') ? (ini === "NA" && fin === "NA") : false;
+          if (!excluir) incluidos.push(svc);
+        });
+        const sumaPesos = incluidos.reduce((s, svc) => s + baseZ[svc], 0);
+        ["H","ACS","C","L"].forEach(svc => {
+          if (incluidos.includes(svc)) {
+            const coef = baseZ[svc] / (sumaPesos || 1);
+            E[svc] = eTotal * coef; // kWh/año
+          } else { E[svc] = 0; }
+        });
+
+      } else {
+        // "Por servicio" son intensidades en kWh/m²·año → convertir a kWh/año con la superficie
+        const S = Math.max(0, superficie);
+        E.H   = eCalef  * S;
+        E.ACS = eACS    * S;
+        E.C   = eRefrig * S;
+        E.L   = eIlum   * S;
+      }
+
+      const A = { H: 0, C: 0, ACS: 0, L: 0 };
+      const P = { H: 0, C: 0, ACS: 0, L: 0 };
+      const aplica = { H: false, C: false, ACS: false, L: false };
+
+      if (modoCalculo === 'TER050') {
+        ["H","C","ACS","L"].forEach(svc => {
+          const iniRaw = clases[svc].ini;
+          const fin    = clases[svc].fin;
+
+          // Si la clase inicial es D, la tratamos como C a efectos de estimación (D→B usa C→B; D→A usa C→A)
+          const iniEfectiva = (iniRaw === 'D') ? 'C' : iniRaw;
+
+          const key     = getKeySalto(iniEfectiva, fin);
+          const svcData = data[svc];
+          const p       = key && svcData && svcData[key] ? svcData[key] : 0;
+
+          P[svc]      = p;
+          A[svc]      = E[svc] * p;
+          aplica[svc] = p > 0;
+        });
+      } else {
+        const sub = document.getElementById('modoSingular')?.value || 'servicio';
+        if (sub === 'total') {
+          const pTot = Math.max(0, (parseFloat(document.getElementById('pSingTotal').value) || 0) / 100);
+          P.H = P.C = P.ACS = P.L = pTot;
+          A.H = E.H * pTot; A.C = E.C * pTot; A.ACS = E.ACS * pTot; A.L = E.L * pTot;
+          aplica.H = aplica.C = aplica.ACS = aplica.L = pTot > 0;
+        } else {
+          const pH   = (parseFloat(document.getElementById('pSingH').value)   || 0) / 100;
+          const pC   = (parseFloat(document.getElementById('pSingC').value)   || 0) / 100;
+          const pACS = (parseFloat(document.getElementById('pSingACS').value) || 0) / 100;
+          const pL   = (parseFloat(document.getElementById('pSingL').value)   || 0) / 100;
+          P.H = Math.max(0, pH); P.C = Math.max(0, pC); P.ACS = Math.max(0, pACS); P.L = Math.max(0, pL);
+          A.H = E.H * P.H; A.C = E.C * P.C; A.ACS = E.ACS * P.ACS; A.L = E.L * P.L;
+          aplica.H = P.H > 0; aplica.C = P.C > 0; aplica.ACS = P.ACS > 0; aplica.L = P.L > 0;
+        }
+      }
+
+      const A_total_kWh = A.H + A.C + A.ACS + A.L;
+      const ahorroEnergiaEuro = A_total_kWh * precioEnergia;
+      const valorCAEEuro      = A_total_kWh * precioCAE;
+
+      const beneficioAnualSinCAE = ahorroEnergiaEuro - OPEX;
+      const beneficioAnualConCAE = (ahorroEnergiaEuro + valorCAEEuro) - OPEX;
+
+      const paybackSin = beneficioAnualSinCAE > 0 ? (CAPEX / beneficioAnualSinCAE) : Infinity;
+      const paybackCon = beneficioAnualConCAE > 0 ? (CAPEX / beneficioAnualConCAE) : Infinity;
+
+      document.getElementById('resAhorroKWh').innerHTML =
+        `<span class="metric-strong">${A_total_kWh.toFixed(0)} kWh/año</span> de ahorro energético total`;
+      document.getElementById('resAhorroEurosEnergia').innerHTML =
+        `Ahorro económico por energía (sin CAE): <span class="metric-strong">${ahorroEnergiaEuro.toFixed(0)} € / año</span>`;
+      document.getElementById('resValorCAE').innerHTML =
+        `Valor adicional estimado por CAEs: <span class="metric-strong">${valorCAEEuro.toFixed(0)} € / año</span>`;
+      document.getElementById('resSinCAE').innerHTML =
+        `Sin CAE → Retorno estimado de la inversión en <span class="metric-strong">${paybackSin === Infinity ? 'n/a' : (paybackSin.toFixed(1) + ' años')}</span> (según ahorro de energía neto).`;
+      document.getElementById('resConCAE').innerHTML =
+        `Con CAE → Retorno estimado de la inversión en <span class="metric-strong">${paybackCon === Infinity ? 'n/a' : (paybackCon.toFixed(1) + ' años')}</span> (ahorro de energía + ingresos por CAEs).`;
+
+      __state = {
+        inputs: {
+          nombreProyecto,
+          tipo, zona, zonaText, superficie,
+          modoConsumo, eCalef, eACS, eRefrig, eIlum, eTotal,
+          precioEnergia, precioCAE, costeSubs, costeMaterial, costeInstal, CAPEX, OPEX
+        },
+        config: {
+          modoCalculo,
+          clases,
+          singular: {
+            modo: document.getElementById('modoSingular')?.value || 'servicio',
+            pTot: parseFloat(document.getElementById('pSingTotal')?.value || '0'),
+            pH:   parseFloat(document.getElementById('pSingH')?.value   || '0'),
+            pC:   parseFloat(document.getElementById('pSingC')?.value   || '0'),
+            pACS: parseFloat(document.getElementById('pSingACS')?.value || '0'),
+            pL:   parseFloat(document.getElementById('pSingL')?.value   || '0'),
+          }
+        },
+        zone: { baseZ, incluidos, zoneWeights: zoneWeights[zona] || null },
+        E, P, A,
+        resultados: {
+          A_total_kWh, ahorroEnergiaEuro, valorCAEEuro, beneficioAnualSinCAE, beneficioAnualConCAE, paybackSin, paybackCon
+        }
+      };
+
+      // Detalle en pantalla
+      const detDiv = document.getElementById('detalleServicios');
+      const tituloDetalle = document.getElementById('tituloDetalle');
+      const modo = modoCalculo;
+      const sub = __state.config.singular.modo;
+
+      if (modo === 'Singular' && sub === 'total') {
+        tituloDetalle.textContent = 'Detalle de ahorro';
+        detDiv.innerHTML = `
+          <table>
+            <thead><tr><th>Ámbito</th><th>% ahorro total</th><th>Ahorro kWh/año</th></tr></thead>
+            <tbody><tr><td>Total</td><td>${(__state.P.H*100).toFixed(1)} %</td><td>${A_total_kWh.toFixed(0)}</td></tr></tbody>
+          </table>`;
+      } else {
+        tituloDetalle.textContent = 'Detalle por servicio';
+        const claseFmt = (svc) => modo === 'TER050' ? `${clases[svc].ini} → ${clases[svc].fin}` : '—';
+        detDiv.innerHTML = `
+          <table>
+            <thead><tr><th>Servicio</th><th>${modo === 'TER050' ? 'Clase ini → fin' : 'Clases'}</th><th>% ahorro</th><th>Ahorro kWh/año</th></tr></thead>
+            <tbody>
+              <tr><td>Calefacción</td><td>${claseFmt('H')}</td><td>${(__state.P.H*100).toFixed(1)} %</td><td>${__state.A.H.toFixed(0)}</td></tr>
+              <tr><td>Refrigeración</td><td>${claseFmt('C')}</td><td>${(__state.P.C*100).toFixed(1)} %</td><td>${__state.A.C.toFixed(0)}</td></tr>
+              <tr><td>ACS</td><td>${claseFmt('ACS')}</td><td>${(__state.P.ACS*100).toFixed(1)} %</td><td>${__state.A.ACS.toFixed(0)}</td></tr>
+              <tr><td>Iluminación</td><td>${claseFmt('L')}</td><td>${(__state.P.L*100).toFixed(1)} %</td><td>${__state.A.L.toFixed(0)}</td></tr>
+            </tbody>
+          </table>`;
+      }
+
+      // Nota bajo la tabla de detalle si A_total_kWh < 30.000 kWh/año
+      if (A_total_kWh < 30000) {
+        const notaAgr = document.createElement('p');
+        notaAgr.className = 'card-small';
+        notaAgr.style.marginTop = '6px';
+        notaAgr.textContent = 'Se necesita agrupar el ahorro hasta llegar a los 30.000 kWh/año para su comercialización mediante CAEs.';
+        detDiv.appendChild(notaAgr);
+      }
+    }
+
+    function buildInforme() {
+      if (!__state) calcularROI();
+      if (!__state) return;
+
+      // Fecha y hora en la banda (formato local)
+      const now = new Date();
+      const fechaTxt = now.toLocaleString();
+      const fechaEl = document.getElementById('inf-fecha');
+      if (fechaEl) fechaEl.textContent = fechaTxt;
+
+      // Proyecto (si se introdujo)
+      const infProyecto = document.getElementById('inf-proyecto');
+      if (__state.inputs.nombreProyecto) {
+        infProyecto.innerHTML = `<strong>Proyecto:</strong> ${__state.inputs.nombreProyecto}`;
+      } else {
+        infProyecto.innerHTML = '';
+      }
+
+      // 1) Edificio
+      const infEdificio = document.getElementById('inf-edificio');
+      infEdificio.innerHTML = `
+        <table>
+          <thead><tr><th>Campo</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Tipo de edificio</td><td>${__state.inputs.tipo}</td></tr>
+            <tr><td>Zona climática (CTE)</td><td>${__state.inputs.zonaText}</td></tr>
+            <tr><td>Superficie (m²)</td><td>${(__state.inputs.superficie || 0).toLocaleString()}</td></tr>
+          </tbody>
+        </table>`;
+
+      // 2) Consumos
+      const infConsumos = document.getElementById('inf-consumos');
+      if (__state.inputs.modoConsumo === 'servicio') {
+        // Mostrar lo introducido por el usuario en kWh/m²·año
+        infConsumos.innerHTML = `
+          <table>
+            <thead><tr><th>Servicio</th><th>kWh/m²·año</th></tr></thead>
+            <tbody>
+              <tr><td>Calefacción</td><td>${(__state.inputs.eCalef || 0).toLocaleString()}</td></tr>
+              <tr><td>Refrigeración</td><td>${(__state.inputs.eRefrig || 0).toLocaleString()}</td></tr>
+              <tr><td>ACS</td><td>${(__state.inputs.eACS || 0).toLocaleString()}</td></tr>
+              <tr><td>Iluminación</td><td>${(__state.inputs.eIlum || 0).toLocaleString()}</td></tr>
+            </tbody>
+          </table>`;
+      } else {
+        const z = __state.zone.zoneWeights;
+        const base = __state.zone.baseZ || {H:0.25, C:0.25, ACS:0.25, L:0.25};
+
+        // Reparto por pesos + nota TER050 (si aplica)
+        infConsumos.innerHTML = `
+          <p><strong>Consumo total del edificio:</strong> ${__state.inputs.eTotal.toLocaleString()} kWh/año</p>
+          <p class="muted">Reparto aplicado según zona CTE seleccionada (normalizado sobre H/C/ACS/L):</p>
+          <table>
+            <thead><tr><th>Servicio</th><th>Peso aplicado</th><th>kWh/año distribuidos</th></tr></thead>
+            <tbody>
+              <tr><td>Calefacción</td><td>${(base.H*100).toFixed(1)} %</td><td>${__state.E.H.toFixed(0)}</td></tr>
+              <tr><td>Refrigeración</td><td>${(base.C*100).toFixed(1)} %</td><td>${__state.E.C.toFixed(0)}</td></tr>
+              <tr><td>ACS</td><td>${(base.ACS*100).toFixed(1)} %</td><td>${__state.E.ACS.toFixed(0)}</td></tr>
+              <tr><td>Iluminación</td><td>${(base.L*100).toFixed(1)} %</td><td>${__state.E.L.toFixed(0)}</td></tr>
+            </tbody>
+          </table>
+          ${z ? `<p class="muted">Pesos originales (tabla de zona CTE, incluyen “Otros”): H ${Math.round(z.H*100)} %, C ${Math.round(z.C*100)} %, ACS ${Math.round(z.ACS*100)} %, L ${Math.round(z.L*100)} %, Otros ${Math.round(z.Otros*100)} %.</p>` : ``}
+        `;
+
+        if (__state.config.modoCalculo === 'TER050') {
+          infConsumos.innerHTML += `
+            <h4>Consumo estimado por servicio (kWh/año)</h4>
+            <table>
+              <thead><tr><th>Servicio</th><th>Consumo (kWh/año)</th></tr></thead>
+              <tbody>
+                <tr><td>Calefacción</td><td>${__state.E.H.toFixed(0)}</td></tr>
+                <tr><td>Refrigeración</td><td>${__state.E.C.toFixed(0)}</td></tr>
+                <tr><td>ACS</td><td>${__state.E.ACS.toFixed(0)}</td></tr>
+                <tr><td>Iluminación</td><td>${__state.E.L.toFixed(0)}</td></tr>
+              </tbody>
+            </table>
+            <p class="muted">
+              Nota: Se ha realizado una estimación de consumos por servicios según la zona climática CTE seleccionada.
+              Esta es una estimación que <strong>no es válida</strong> para la presentación de la ficha TER050,
+              en la que se deben recoger los consumos por servicio de la <strong>simulación de demanda energética</strong>
+              del edificio del <strong>certificado de eficiencia energética</strong>.
+            </p>
+          `;
+        }
+      }
+
+      // 3) Economía
+      const infEco = document.getElementById('inf-economia');
+      infEco.innerHTML = `
+        <table>
+          <thead><tr><th>Concepto</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Precio de la energía (€/kWh)</td><td>${__state.inputs.precioEnergia}</td></tr>
+            <tr><td>Precio CAE (€/kWh ahorrado)</td><td>${__state.inputs.precioCAE}</td></tr>
+            <tr><td>CAPEX (material + instalación)</td><td>${__state.inputs.CAPEX.toLocaleString()} €</td></tr>
+            <tr><td>OPEX (suscripción anual)</td><td>${__state.inputs.OPEX.toLocaleString()} €</td></tr>
+          </tbody>
+        </table>`;
+
+      // 4) Configuración
+      const infCfg = document.getElementById('inf-config');
+      if (__state.config.modoCalculo === 'TER050') {
+        const c = __state.config.clases;
+        infCfg.innerHTML = `
+          <p><strong>Modo:</strong> TER050 (ahorro estandarizado por salto de clase)</p>
+          <table>
+            <thead><tr><th>Servicio</th><th>Clase inicial</th><th>Clase final</th></tr></thead>
+            <tbody>
+              <tr><td>Calefacción</td><td>${c.H.ini}</td><td>${c.H.fin}</td></tr>
+              <tr><td>Refrigeración</td><td>${c.C.ini}</td><td>${c.C.fin}</td></tr>
+              <tr><td>ACS</td><td>${c.ACS.ini}</td><td>${c.ACS.fin}</td></tr>
+              <tr><td>Iluminación</td><td>${c.L.ini}</td><td>${c.L.fin}</td></tr>
+            </tbody>
+          </table>`;
+      } else {
+        const s = __state.config.singular;
+        infCfg.innerHTML = `
+          <p><strong>Modo:</strong> Actuación Singular</p>
+          ${
+            s.modo === 'total'
+            ? `<p>Porcentaje de ahorro total declarado: <strong>${(s.pTot || 0)} %</strong></p>`
+            : `
+              <table>
+                <thead><tr><th>Servicio</th><th>% ahorro declarado</th></tr></thead>
+                <tbody>
+                  <tr><td>Calefacción</td><td>${s.pH || 0} %</td></tr>
+                  <tr><td>Refrigeración</td><td>${s.pC || 0} %</td></tr>
+                  <tr><td>ACS</td><td>${s.pACS || 0} %</td></tr>
+                  <tr><td>Iluminación</td><td>${s.pL || 0} %</td></tr>
+                </tbody>
+              </table>
+            `
+          }`;
+      }
+
+      // Resultados
+      const R = __state.resultados;
+      const infRes = document.getElementById('inf-resultados');
+      const pb = (x) => x === Infinity ? 'n/a' : `${x.toFixed(1)} años`;
+      infRes.innerHTML = `
+        <table>
+          <thead><tr><th>Métrica</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Ahorro energético total</td><td>${R.A_total_kWh.toFixed(0)} kWh/año</td></tr>
+            <tr><td>Ahorro económico (sin CAE)</td><td>${R.ahorroEnergiaEuro.toFixed(0)} € / año</td></tr>
+            <tr><td>Valor estimado por CAEs</td><td>${R.valorCAEEuro.toFixed(0)} € / año</td></tr>
+            <tr><td>Payback sin CAE</td><td>${pb(R.paybackSin)}</td></tr>
+            <tr><td>Payback con CAE</td><td>${pb(R.paybackCon)}</td></tr>
+          </tbody>
+        </table>`;
+
+      // Nota bajo “Resultados” si A_total_kWh < 30.000 kWh/año
+      if (R.A_total_kWh < 30000) {
+        infRes.innerHTML += `
+          <p class="muted" style="margin-top:6px;">
+            Se necesita agrupar el ahorro hasta llegar a los <strong>30.000 kWh/año</strong> para su comercialización mediante CAEs.
+          </p>
+        `;
+      }
+
+      // Nota final para Actuación Singular (pie del informe)
+      const infNotas = document.getElementById('inf-notas');
+      infNotas.innerHTML = '';
+      if (__state.config.modoCalculo === 'Singular') {
+        infNotas.innerHTML = `
+          <h3>Notas</h3>
+          <p>
+            Cuando la actuación no se ajusta a una medida estandarizada, puede
+            tramitarse como proyecto singular, conforme al Real Decreto 36/2023.
+            Esta vía permite integrar el sistema BACS dentro de un proyecto global
+            de mejora energética (climatización, fachada, autoconsumo, etc.).
+          </p>
+          <p><strong>Requisitos:</strong></p>
+          <ul>
+            <li>Expediente técnico completo con descripción de las medidas.</li>
+            <li>Cálculo del ahorro mediante línea base y verificación posterior (ej. protocolo IPMVP).</li>
+            <li>Verificación independiente del ahorro y mayor carga documental.</li>
+          </ul>
+        `;
+      }
+    }
+
+    function printInforme() {
+      calcularROI();
+      buildInforme();
+      window.print();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      actualizarVisibilidadConsumos();
+      actualizarModoCalculo();
+      actualizarModoSingular();
+      actualizarTextoUnidadesConsumos();
+    });
+  </script>
+
+  <div class="se-legal-footer no-print">Propiedad de Schneider Electric © 2026 · Desarrollado por Antonio Paz</div>
+
+</body>
+</html>

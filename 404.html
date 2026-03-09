@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Página no encontrada</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #F5F7F9; color: #1F2933; }
+    .card { background: white; border: 1px solid #D0D7E2; border-radius: 12px; padding: 24px; max-width: 560px; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+    a { color: #009E4D; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>404 · Página no encontrada</h1>
+    <p>Volviendo a la calculadora…</p>
+    <p>Si no se redirige automáticamente, pulsa <a id="homeLink" href="./">aquí</a>.</p>
+  </div>
+  <script>
+    (function () {
+      var base = location.pathname.replace(/\/[^/]*$/, '/');
+      document.getElementById('homeLink').setAttribute('href', base);
+      setTimeout(function () { location.replace(base); }, 1200);
+    })();
+  </script>
+</body>
+</html>
